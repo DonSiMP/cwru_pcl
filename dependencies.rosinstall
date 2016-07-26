@@ -7,3 +7,6 @@
 - git:
     local-name: cwru_msgs
     uri: https://github.com/cwru-robotics/cwru_msgs
+- git:
+    local-name: catkin_simple
+    uri: https://github.com/catkin/catkin_simple.git
