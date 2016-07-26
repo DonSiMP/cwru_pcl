@@ -18,7 +18,7 @@ void CwruPclUtils::fit_points_to_plane(Eigen::MatrixXf points_mat,Eigen::Vector3
     // here's a handy way to initialize data to all zeros; more variants exist
     centroid = Eigen::MatrixXf::Zero(3,1); // see http://eigen.tuxfamily.org/dox/AsciiQuickReference.txt
     //add all the points together:
-    int npts = points_mat.cols(); // number of points = number of columns in matrix; check the size
+    int npts = points_mat.cols();  // number of points = number of columns in matrix; check the size
     //cout<<"matrix has ncols = "<<npts<<endl;
     for (int ipt =0;ipt<npts;ipt++) {
 	centroid+= points_mat.col(ipt); //add all the column vectors together
