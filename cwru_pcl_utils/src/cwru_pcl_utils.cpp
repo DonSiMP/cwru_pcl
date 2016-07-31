@@ -23,7 +23,8 @@ CwruPclUtils::CwruPclUtils(ros::NodeHandle* nodehandle):
 
 void CwruPclUtils::fit_points_to_plane(Eigen::MatrixXf points_mat, Eigen::Vector3f &plane_normal, double &plane_dist)
 {
-  // ROS_INFO("starting identification of plane from data: ");
+  ROS_INFO("[cwru_pcl_utils: fit_points_to_plane] Starting identification of plane from data: ");
+
   // first compute the centroid of the data:
   Eigen::Vector3f centroid;
   // here's a handy way to initialize data to all zeros; more variants exist
@@ -31,12 +32,12 @@ void CwruPclUtils::fit_points_to_plane(Eigen::MatrixXf points_mat, Eigen::Vector
   // add all the points together:
   int npts = points_mat.cols();  // number of points = number of columns in matrix; check the size
 
-  for (int ipt = 0; ipt < npts; ipt++)
+  for (uint ipt = 0; ipt < npts; ipt++)
   {
     centroid += points_mat.col(ipt);  // add all the column vectors together
   }
   centroid /= npts;  // divide by the number of points to get the centroid
-  // std::cout << "centroid: " << centroid.transpose() << std::endl;
+  ROS_DEBUG("[cwru_pcl_utils: fit_points_to_plane] Centroid found, removing it from all points.");
 
   // subtract this centroid from all points in points_mat:
   Eigen::MatrixXf points_offset_mat = points_mat;
@@ -46,48 +47,33 @@ void CwruPclUtils::fit_points_to_plane(Eigen::MatrixXf points_mat, Eigen::Vector
   }
 
   // compute the covariance matrix w/rt x,y,z:
+  ROS_DEBUG("[cwru_pcl_utils: fit_points_to_plane] Computing covariance.");
   Eigen::Matrix3f CoVar;
   CoVar = points_offset_mat*(points_offset_mat.transpose());  // 3xN matrix times Nx3 matrix is 3x3
-  // std::cout << "covariance: " << std::endl;
-  // std::cout << CoVar << std::endl;
+  ROS_DEBUG("[cwru_pcl_utils: fit_points_to_plane] Covariance found!");
 
   // here is a more complex object: a solver for eigenvalues/eigenvectors;
   // we will initialize it with our covariance matrix, which will induce computing eval/evec pairs
+  ROS_DEBUG("[cwru_pcl_utils: fit_points_to_plane] Initializing eigenvalue solver with computed covariance.");
   Eigen::EigenSolver<Eigen::Matrix3f> es3f(CoVar);
 
   Eigen::VectorXf evals;  // we'll extract the eigenvalues to here
-  // std::cout<<"size of evals: "<<es3d.eigenvalues().size()<<std::endl;
-  // std::cout<<"rows,cols = "<<es3d.eigenvalues().rows()<<", "<<es3d.eigenvalues().cols()<<std::endl;
-  // std::cout << "The eigenvalues of CoVar are:" << std::endl << es3d.eigenvalues().transpose() << std::endl;
-  // std::cout<<"(these should be real numbers, and one of them should be zero)"<<std::endl;
-  // std::cout << "The matrix of eigenvectors, V, is:" << std::endl;
-  // std::cout<< es3d.eigenvectors() << std::endl << std::endl;
-  // std::cout<< "(these should be real-valued vectors)"<<std::endl;
-
-  // in general, the eigenvalues/eigenvectors can be complex numbers
-  // however, since our matrix is self-adjoint (symmetric, positive semi-definite), we expect
-  // real-valued evals/evecs;  we'll need to strip off the real parts of the solution
-
   evals = es3f.eigenvalues().real();  // grab just the real parts
-  // std::cout << "real parts of evals: " << evals.transpose() << std::endl;
+  ROS_DEBUG("[cwru_pcl_utils: fit_points_to_plane] Real eigenvalues determined.");
 
   // our solution should correspond to an e-val of zero, which will be the minimum eval
   // (all other evals for the covariance matrix will be >0)
   // however, the solution does not order the evals, so we'll have to find the one of interest ourselves
-
+  ROS_DEBUG("[cwru_pcl_utils: fit_points_to_plane] Finding minimum eigenvalue.");
   double min_lambda = evals[0];  // initialize the hunt for min eval
   Eigen::Vector3cf complex_vec;  // here is a 3x1 vector of double-precision, complex numbers
 
-  complex_vec = es3f.eigenvectors().col(0);  // here's the first e-vec, corresponding to first e-val
-  // std::cout<<"complex_vec: "<<std::endl;
-  // std::cout<<complex_vec<<std::endl;
-  plane_normal = complex_vec.real();  // strip off the real part
-  // std::cout<<"real part: "<<est_plane_normal.transpose()<<std::endl;
-  // est_plane_normal = es3d.eigenvectors().col(0).real(); // evecs in columns
+  complex_vec = es3f.eigenvectors().col(0);  // Here's the first e-vec, corresponding to first e-val
+  plane_normal = complex_vec.real();  // Strip off the real part
 
   double lambda_test;
   int i_normal = 0;
-  // loop through "all" ("both", in this 3-D case) the rest of the solns, seeking min e-val
+  // Loop through "all" ("both", in this 3-D case) the rest of the solns, seeking min e-val
   for (int ivec = 1; ivec < 3; ivec++)
   {
     lambda_test = evals[ivec];
@@ -98,18 +84,15 @@ void CwruPclUtils::fit_points_to_plane(Eigen::MatrixXf points_mat, Eigen::Vector
       plane_normal = es3f.eigenvectors().col(ivec).real();
     }
   }
+
+  // Found the minimum eigenvalue.
+  ROS_DEBUG("[cwru_pcl_utils: fit_points_to_plane] Minimum eigenvalue found: %d", min_lambda);
+
   // at this point, we have the minimum eval in "min_lambda", and the plane normal
   // (corresponding evec) in "est_plane_normal"/
   // these correspond to the ith entry of i_normal
-
-  // std::cout << "min eval is " << min_lambda << ", corresponding to component " << i_normal << std::endl;
-  // std::cout << "corresponding evec (est plane normal): " << est_plane_normal.transpose() << std::endl;
-  // std::cout << "correct answer is: " << normal_vec.transpose() << std::endl;
   plane_dist = plane_normal.dot(centroid);
-
-  // std::cout << "est plane distance from origin = " << est_dist << std::endl;
-  // std::cout << "correct answer is: " << dist << std::endl;
-  // std::cout << std::endl << std::endl;
+  ROS_INFO("[cwru_pcl_utils: fit_points_to_plane] Plane distance found: %d", plane_dist);
 }
 
 void CwruPclUtils::fit_points_to_plane(pcl::PointCloud<pcl::PointXYZ>::Ptr input_cloud_ptr,

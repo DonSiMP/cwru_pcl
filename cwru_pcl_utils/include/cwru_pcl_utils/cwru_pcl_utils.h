@@ -80,6 +80,68 @@ public:
                        pcl::PointCloud<pcl::PointXYZ>::Ptr input_cloud_ptr,
                        pcl::PointCloud<pcl::PointXYZ>::Ptr output_cloud_ptr);
 
+
+  Eigen::Vector3f compute_centroid(pcl::PointCloud<pcl::PointXYZ>::Ptr input_cloud_ptr);
+
+  void copy_cloud(PointCloud<pcl::PointXYZ>::Ptr inputCloud, PointCloud<pcl::PointXYZ>::Ptr outputCloud);
+
+  void copy_cloud_xyzrgb_indices(PointCloud<pcl::PointXYZRGB>::Ptr inputCloud,
+                                 vector<int> &indices,
+                                 PointCloud<pcl::PointXYZRGB>::Ptr outputCloud);
+
+  void copy_indexed_pts_to_output_cloud(vector<int> &indices,
+                                        PointCloud<pcl::PointXYZRGB> &outputCloud);
+
+  void get_gen_purpose_cloud(pcl::PointCloud<pcl::PointXYZ> &outputCloud);
+
+  void filter_cloud_z(PointCloud<pcl::PointXYZ>::Ptr inputCloud,
+                      double z_nom,
+                      double z_eps,
+                      vector<int> &indices);
+
+  // as above, specifically for transformed kinect cloud:
+  void find_coplanar_pts_z_height(double plane_height,
+                                  double z_eps,
+                                  vector<int> &indices);
+
+  // find pts within +/- z_eps of z_height, AND within "radius" of "centroid"
+  void filter_cloud_z(PointCloud<pcl::PointXYZ>::Ptr inputCloud,
+                      double z_nom,
+                      double z_eps,
+                      double radius,
+                      Eigen::Vector3f centroid,
+                      vector<int> &indices);
+
+  // same as above, but specifically operates on transformed kinect cloud
+  void filter_cloud_z(double z_nom, 
+                      double z_eps,
+                      double radius,
+                      Eigen::Vector3f centroid,
+                      vector<int> &indices);   
+
+  Eigen::Vector3d find_avg_color();
+
+  Eigen::Vector3d find_avg_color_selected_pts(vector<int> &indices);
+
+  void find_indices_color_match(vector<int> &input_indices,
+                                Eigen::Vector3d normalized_avg_color,
+                                double color_match_thresh,
+                                vector<int> &output_indices);
+
+  void example_pcl_operation();
+
+  void analyze_selected_points_color();
+
+  inline Eigen::Vector3f get_centroid()
+  {
+    return centroid_;
+  }
+
+  inline Eigen::Vector3f get_major_axis()
+  {
+    return major_axis_;
+  }
+
   inline void reset_got_kinect_cloud()
   {
     got_kinect_cloud_ = false;
@@ -105,10 +167,22 @@ public:
     pcl::io::savePCDFileASCII("kinect_snapshot.pcd", *pclKinect_ptr_);
   }
 
+  inline void save_kinect_clr_snapshot()
+  {
+    pcl::io::savePCDFileASCII("kinect_clr_snapshot.pcd", *pclKinect_clr_ptr_);
+  }
+
   inline void save_transformed_kinect_snapshot()
   {
     pcl::io::savePCDFileASCII("xformed_kinect_snapshot.pcd", *pclTransformed_ptr_);
   }
+
+  inline void get_indices(vector<int> &indices)
+  {
+    indices = indices_;
+  }
+
+
 
 private:
   ros::NodeHandle nh_;
